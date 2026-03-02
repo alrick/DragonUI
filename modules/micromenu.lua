@@ -12,9 +12,37 @@ local config = addon.config;
 -- SERVER DETECTION & MODULE STATE
 -- ============================================================================
 
--- Detect if we are on an Ascension server by checking for one of its custom buttons.
--- This is the most reliable method.
-local isAscensionServer = (_G.PathToAscensionMicroButton ~= nil)
+local isAscensionServer = false
+
+-- Vérification du type de bouton pour éviter les crashes
+local function IsValidMicroButton(button)
+    local buttonType = type(button)
+    if buttonType ~= "table" and buttonType ~= "userdata" then
+        return false
+    end
+
+    if not button.GetObjectType then
+        return false
+    end
+
+    return button:GetObjectType() == "Button"
+end
+
+-- Boutons à exclure (doublons, boutons cassés, indicateurs)
+local EXCLUDED_MICROBUTTONS = {
+    DraftModeMicroButton = true,
+    DraftMicroButton = true,
+    ToggleDraftCardsMicroButton = true,
+    ToggleDraftMicroButton = true,
+    SocialMicroButton = true,
+    FriendsMicroButton = true,
+    SpellBookMicroButtonRankUp = true
+}
+
+-- Détection simple du serveur Ascension
+local function DetectAscensionServer()
+    return IsValidMicroButton(_G.PathToAscensionMicroButton) or IsValidMicroButton(_G.ChallengesMicroButton)
+end
 
 local MicromenuModule = {
     initialized = false,
@@ -63,37 +91,99 @@ local HelpMicroButton = _G.HelpMicroButton;
 local KeyRingButton = _G.KeyRingButton;
 
 -- Button collections (dynamically set based on server)
-local MICRO_BUTTONS
+local MICRO_BUTTONS = {}
 
-if isAscensionServer then
-    MICRO_BUTTONS = {
-        _G.CharacterMicroButton,
-        _G.SpellbookMicroButton,
-        _G.TalentMicroButton,
-        _G.AchievementMicroButton,
-        _G.QuestLogMicroButton,
-        _G.SocialsMicroButton,
-        _G.LFDMicroButton,
-        _G.PathToAscensionMicroButton,
-        _G.ChallengesMicroButton,
-        _G.MainMenuMicroButton,
-        _G.HelpMicroButton
-    }
-else
-    MICRO_BUTTONS = {
-        _G.CharacterMicroButton,
-        _G.SpellbookMicroButton,
-        _G.TalentMicroButton,
-        _G.AchievementMicroButton,
-        _G.QuestLogMicroButton,
-        _G.SocialsMicroButton,
-        _G.LFDMicroButton,
-        _G.CollectionsMicroButton,
-        _G.PVPMicroButton,
-        _G.MainMenuMicroButton,
-        _G.HelpMicroButton
-    }
+local function AddMicroButtonByName(buttons, added, globalName)
+    local button = _G[globalName]
+    if EXCLUDED_MICROBUTTONS[globalName] then
+        return
+    end
+
+    if IsValidMicroButton(button)
+        and not added[globalName]
+        and not added[button] then
+        table.insert(buttons, button)
+        added[globalName] = true
+        added[button] = true
+    end
 end
+
+local function BuildMicroButtons()
+    local buttons = {}
+    local added = {}
+
+    AddMicroButtonByName(buttons, added, "CharacterMicroButton")
+    AddMicroButtonByName(buttons, added, "SpellbookMicroButton")
+    AddMicroButtonByName(buttons, added, "TalentMicroButton")
+    AddMicroButtonByName(buttons, added, "AchievementMicroButton")
+    AddMicroButtonByName(buttons, added, "QuestLogMicroButton")
+    AddMicroButtonByName(buttons, added, "SocialsMicroButton")
+    AddMicroButtonByName(buttons, added, "LFDMicroButton")
+
+    if isAscensionServer then
+        AddMicroButtonByName(buttons, added, "PathToAscensionMicroButton")
+        AddMicroButtonByName(buttons, added, "ChallengesMicroButton")
+
+        local extraAscensionButtons = {}
+        for globalName, button in pairs(_G) do
+            if type(globalName) == "string"
+                and globalName:find("MicroButton")
+                and not added[globalName]
+                and not EXCLUDED_MICROBUTTONS[globalName]
+                and globalName ~= "MainMenuMicroButton"
+                and globalName ~= "HelpMicroButton"
+                and globalName ~= "CharacterMicroButton"
+                and globalName ~= "SpellbookMicroButton"
+                and globalName ~= "TalentMicroButton"
+                and globalName ~= "AchievementMicroButton"
+                and globalName ~= "QuestLogMicroButton"
+                and globalName ~= "SocialsMicroButton"
+                and globalName ~= "LFDMicroButton"
+                and IsValidMicroButton(button) then
+                table.insert(extraAscensionButtons, globalName)
+            end
+        end
+
+        table.sort(extraAscensionButtons)
+        for _, globalName in ipairs(extraAscensionButtons) do
+            AddMicroButtonByName(buttons, added, globalName)
+        end
+    else
+        AddMicroButtonByName(buttons, added, "CollectionsMicroButton")
+        AddMicroButtonByName(buttons, added, "PVPMicroButton")
+    end
+
+    AddMicroButtonByName(buttons, added, "MainMenuMicroButton")
+    AddMicroButtonByName(buttons, added, "HelpMicroButton")
+
+    return buttons
+end
+
+local function RefreshServerAndMicroButtons()
+    isAscensionServer = DetectAscensionServer()
+    MICRO_BUTTONS = BuildMicroButtons()
+end
+
+local function SafeRefreshServerAndMicroButtons()
+    local ok, err = pcall(RefreshServerAndMicroButtons)
+    if not ok then
+        isAscensionServer = false
+        MICRO_BUTTONS = {
+            _G.CharacterMicroButton,
+            _G.SpellbookMicroButton,
+            _G.TalentMicroButton,
+            _G.AchievementMicroButton,
+            _G.QuestLogMicroButton,
+            _G.SocialsMicroButton,
+            _G.LFDMicroButton,
+            _G.CollectionsMicroButton,
+            _G.MainMenuMicroButton,
+            _G.HelpMicroButton
+        }
+    end
+end
+
+SafeRefreshServerAndMicroButtons()
 
 
 local bagslots = {_G.CharacterBag0Slot, _G.CharacterBag1Slot, _G.CharacterBag2Slot, _G.CharacterBag3Slot};
@@ -232,6 +322,24 @@ local function GetColoredTextureCoords(buttonName, textureType)
         return coords
     end
     return nil
+end
+
+local function SetAtlasIfExists(texture, atlasName, fallbackAtlasName)
+    if not texture or not addon.atlasinfo then
+        return false
+    end
+
+    if addon.atlasinfo[atlasName] then
+        texture:set_atlas(atlasName)
+        return true
+    end
+
+    if fallbackAtlasName and addon.atlasinfo[fallbackAtlasName] then
+        texture:set_atlas(fallbackAtlasName)
+        return true
+    end
+
+    return false
 end
 
 -- Handler management
@@ -619,6 +727,8 @@ local function ApplyMicromenuSystem()
     if MicromenuModule.applied or not IsModuleEnabled() then
         return
     end
+
+    SafeRefreshServerAndMicroButtons()
 
     -- Store original states first
     StoreOriginalMicroButtonStates()
@@ -1214,7 +1324,21 @@ local function ApplyMicromenuSystem()
         ScheduleHideFrames(1.0)
     end
 
+    local function GetMenuXOffset(iconSpacing)
+        local baseOffset = isAscensionServer and -170 or -140
+        local baseButtonCount = 11
+        local extraButtons = math.max(0, #MICRO_BUTTONS - baseButtonCount)
+
+        if extraButtons <= 0 then
+            return baseOffset
+        end
+
+        return baseOffset - math.floor((extraButtons * iconSpacing) / 2)
+    end
+
     local function setupMicroButtons(xOffset)
+        SafeRefreshServerAndMicroButtons()
+
         local buttonxOffset = 0
 
         local useGrayscale = addon.db.profile.micromenu.grayscale_icons
@@ -1240,7 +1364,7 @@ local function ApplyMicromenuSystem()
             local microMenuFrame = addon.CreateUIFrame(240, 40, "MicroMenu")
 
             -- Define conditional offset
-            local menuXOffset = isAscensionServer and -170 or -140
+            local menuXOffset = GetMenuXOffset(iconSpacing)
 
             -- Apply position from widgets DB or use fallback
             local microMenuConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.micromenu
@@ -1353,17 +1477,22 @@ local function ApplyMicromenuSystem()
                     local disabledTexture = button:GetDisabledTexture()
                     local highlightTexture = button:GetHighlightTexture()
 
+                    local upAtlas = 'ui-hud-micromenu-' .. name .. '-up-2x'
+                    local downAtlas = 'ui-hud-micromenu-' .. name .. '-down-2x'
+                    local disabledAtlas = 'ui-hud-micromenu-' .. name .. '-disabled-2x'
+                    local mouseoverAtlas = 'ui-hud-micromenu-' .. name .. '-mouseover-2x'
+
                     if normalTexture then
-                        normalTexture:set_atlas('ui-hud-micromenu-' .. name .. '-up-2x')
+                        SetAtlasIfExists(normalTexture, upAtlas, 'ui-hud-micromenu-mainmenu-up-2x')
                     end
                     if pushedTexture then
-                        pushedTexture:set_atlas('ui-hud-micromenu-' .. name .. '-down-2x')
+                        SetAtlasIfExists(pushedTexture, downAtlas, 'ui-hud-micromenu-mainmenu-down-2x')
                     end
                     if disabledTexture then
-                        disabledTexture:set_atlas('ui-hud-micromenu-' .. name .. '-disabled-2x')
+                        SetAtlasIfExists(disabledTexture, disabledAtlas, 'ui-hud-micromenu-mainmenu-disabled-2x')
                     end
                     if highlightTexture then
-                        highlightTexture:set_atlas('ui-hud-micromenu-' .. name .. '-mouseover-2x')
+                        SetAtlasIfExists(highlightTexture, mouseoverAtlas, 'ui-hud-micromenu-mainmenu-mouseover-2x')
                     end
                 elseif isPVPButton then
                     SetupPVPButton(button)
@@ -1506,6 +1635,8 @@ local function ApplyMicromenuSystem()
             return
         end
 
+        SafeRefreshServerAndMicroButtons()
+
         local useGrayscale = addon.db.profile.micromenu.grayscale_icons
         local configMode = useGrayscale and "grayscale" or "normal"
         local config = addon.db.profile.micromenu[configMode]
@@ -1529,6 +1660,8 @@ local function ApplyMicromenuSystem()
     if not _G.pUiMicroMenu then
         return
     end
+
+    SafeRefreshServerAndMicroButtons()
 
     local frameInfo = addon:GetEditableFrameInfo("micromenu")
     if frameInfo and frameInfo.frame then
@@ -1554,7 +1687,10 @@ local function ApplyMicromenuSystem()
         end
 
         -- Define conditional offset
-        local menuXOffset = isAscensionServer and -170 or -140
+        local useGrayscale = addon.db.profile.micromenu.grayscale_icons
+        local configMode = useGrayscale and "grayscale" or "normal"
+        local config = addon.db.profile.micromenu[configMode]
+        local menuXOffset = GetMenuXOffset(config.icon_spacing)
 
         -- Ensure the menu follows the container with corrected positioning
         _G.pUiMicroMenu:ClearAllPoints()
@@ -1653,6 +1789,8 @@ end
     if not addon.db or not addon.db.profile or not addon.db.profile.micromenu then
         return
     end
+
+    SafeRefreshServerAndMicroButtons()
 
     if not _G.pUiMicroMenu then
         return
@@ -1886,6 +2024,8 @@ end
     end, 'BAG_UPDATE');
 
     addon.package:RegisterEvents(function()
+        SafeRefreshServerAndMicroButtons()
+
         local xOffset
         if IsAddOnLoaded('ezCollections') then
             xOffset = -180
@@ -1922,6 +2062,8 @@ end
     MicromenuModule.applied = true
 
     -- Execute the main setup
+    SafeRefreshServerAndMicroButtons()
+
     local xOffset
     if IsAddOnLoaded('ezCollections') then
         xOffset = -180
