@@ -252,6 +252,27 @@ local function TryCreateButton()
     attempt()
 end
 
+-- Función para configurar el hook del GameMenuFrame
+local function SetupGameMenuHook()
+    if not GameMenuFrame then return end
+    
+    local originalGameMenuShow = GameMenuFrame.Show
+    if originalGameMenuShow then
+        GameMenuFrame.Show = function(self)
+            originalGameMenuShow(self)
+            
+            -- Intentar crear el botón si no existe
+            if not buttonAdded then
+                CreateDragonUIButton()
+            elseif dragonUIButton then
+                -- Si ya existe, asegurar que esté visible PERO NO reposicionar
+                dragonUIButton:Show()
+                -- Comentado para evitar bug de acumulación: PositionDragonUIButton()
+            end
+        end
+    end
+end
+
 -- Event frame para manejar la inicialización
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
@@ -261,6 +282,8 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == "DragonUI" then
         -- Intentar agregar el botón después de que DragonUI se cargue
         TryCreateButton()
+        -- Configurar el hook del GameMenuFrame
+        SetupGameMenuHook()
         
     elseif event == "PLAYER_LOGIN" then
         -- Segundo intento después del login
@@ -273,27 +296,12 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
                 if not buttonAdded then
                     TryCreateButton()
                 end
+                -- S'assurer que le hook est configuré
+                SetupGameMenuHook()
             end
         end)
         
         self:UnregisterEvent("PLAYER_LOGIN")
     end
 end)
-
--- Hook al GameMenuFrame para intentar agregar el botón cuando se abre
-local originalGameMenuShow = GameMenuFrame.Show
-if originalGameMenuShow then
-    GameMenuFrame.Show = function(self)
-        originalGameMenuShow(self)
-        
-        -- Intentar crear el botón si no existe
-        if not buttonAdded then
-            CreateDragonUIButton()
-        elseif dragonUIButton then
-            -- Si ya existe, asegurar que esté visible PERO NO reposicionar
-            dragonUIButton:Show()
-            -- Comentado para evitar bug de acumulación: PositionDragonUIButton()
-        end
-    end
-end
 
