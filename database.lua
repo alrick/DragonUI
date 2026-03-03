@@ -122,6 +122,8 @@ local defaults = {
             hide_on_vehicle = false,
             bags_collapsed = false,
             grayscale_icons = false,
+            auto_hide = false,
+            auto_hide_alpha = 0.2,
 
             -- Grayscale icons configuration
             grayscale = {

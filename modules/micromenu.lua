@@ -1430,6 +1430,33 @@ local function ApplyMicromenuSystem()
             menu.registeredInEditor = true
         end
 
+        -- Auto-hide functionality
+        if not menu.autoHideConfigured then
+            menu:EnableMouse(true)
+            menu:SetScript("OnEnter", function(self)
+                if addon.db and addon.db.profile and addon.db.profile.micromenu and addon.db.profile.micromenu.auto_hide then
+                    self:SetAlpha(1)
+                end
+            end)
+            menu:SetScript("OnLeave", function(self)
+                if addon.db and addon.db.profile and addon.db.profile.micromenu and addon.db.profile.micromenu.auto_hide then
+                    local alpha = addon.db.profile.micromenu.auto_hide_alpha or 0.2
+                    self:SetAlpha(alpha)
+                end
+            end)
+            menu.autoHideConfigured = true
+        end
+
+        -- Apply initial alpha state
+        if addon.db and addon.db.profile and addon.db.profile.micromenu then
+            if addon.db.profile.micromenu.auto_hide then
+                local alpha = addon.db.profile.micromenu.auto_hide_alpha or 0.2
+                menu:SetAlpha(alpha)
+            else
+                menu:SetAlpha(1)
+            end
+        end
+
         for _, button in pairs(MICRO_BUTTONS) do
             if button then
                 local buttonName = button:GetName():gsub('MicroButton', '')
@@ -1620,6 +1647,22 @@ local function ApplyMicromenuSystem()
                     RestoreOriginalHandlers(button)
                 end
 
+                -- Hook button mouse events for auto-hide functionality
+                if not button.autoHideHooked then
+                    button:HookScript("OnEnter", function(self)
+                        if menu and addon.db and addon.db.profile and addon.db.profile.micromenu and addon.db.profile.micromenu.auto_hide then
+                            menu:SetAlpha(1)
+                        end
+                    end)
+                    button:HookScript("OnLeave", function(self)
+                        if menu and addon.db and addon.db.profile and addon.db.profile.micromenu and addon.db.profile.micromenu.auto_hide then
+                            local alpha = addon.db.profile.micromenu.auto_hide_alpha or 0.2
+                            menu:SetAlpha(alpha)
+                        end
+                    end)
+                    button.autoHideHooked = true
+                end
+
                 buttonxOffset = buttonxOffset + iconSpacing
             end
         end
@@ -1778,6 +1821,31 @@ end
             RegisterStateDriver(_G.pUiBagsBar, 'visibility', '[vehicleui] hide;show')
         else
             UnregisterStateDriver(_G.pUiBagsBar, 'visibility')
+        end
+    end
+
+    function addon.RefreshMicromenuAutoHide()
+        if not _G.pUiMicroMenu then
+            return
+        end
+
+        if not addon.db or not addon.db.profile or not addon.db.profile.micromenu then
+            return
+        end
+
+        local menu = _G.pUiMicroMenu
+        if addon.db.profile.micromenu.auto_hide then
+            -- Enable auto-hide: check if mouse is over the frame
+            local isMouseOver = menu:IsMouseOver()
+            if isMouseOver then
+                menu:SetAlpha(1)
+            else
+                local alpha = addon.db.profile.micromenu.auto_hide_alpha or 0.2
+                menu:SetAlpha(alpha)
+            end
+        else
+            -- Disable auto-hide: set to full opacity
+            menu:SetAlpha(1)
         end
     end
 

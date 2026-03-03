@@ -837,6 +837,49 @@ function addon:CreateOptionsTable()
                         end,
                         order = 9
                     },
+                    separator3 = {
+                        type = 'description',
+                        name = "",
+                        order = 10
+                    },
+                    auto_hide = {
+                        type = 'toggle',
+                        name = "Auto-Hide Menu",
+                        desc = "Automatically fade out the micromenu when the mouse is not hovering over it",
+                        get = function()
+                            return addon.db.profile.micromenu.auto_hide
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.micromenu.auto_hide = value
+                            -- Apply auto-hide immediately
+                            if addon.RefreshMicromenuAutoHide then
+                                addon.RefreshMicromenuAutoHide()
+                            end
+                        end,
+                        order = 11
+                    },
+                    auto_hide_alpha = {
+                        type = 'range',
+                        name = "Hidden Opacity",
+                        desc = "Opacity level when the micromenu is hidden (0 = invisible, 1 = fully visible)",
+                        min = 0,
+                        max = 1,
+                        step = 0.05,
+                        get = function()
+                            return addon.db.profile.micromenu.auto_hide_alpha
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.micromenu.auto_hide_alpha = value
+                            -- Apply alpha change immediately if auto-hide is enabled
+                            if addon.db.profile.micromenu.auto_hide and addon.RefreshMicromenuAutoHide then
+                                addon.RefreshMicromenuAutoHide()
+                            end
+                        end,
+                        disabled = function()
+                            return not addon.db.profile.micromenu.auto_hide
+                        end,
+                        order = 12
+                    },
                                     }
             },
 
