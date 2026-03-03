@@ -114,7 +114,11 @@ local defaults = {
             scale_leftbar = 0.9,
             scale_bottomleft = 0.9,
             scale_bottomright = 0.9,
-            scale_vehicle = 1
+            scale_vehicle = 1,
+            
+            -- Auto-hide settings for additional bars
+            auto_hide_bars = false,
+            auto_hide_alpha = 0.2
         },
 
         micromenu = {
@@ -199,15 +203,17 @@ local defaults = {
         additional = {
             size = 32,
             spacing = 6,
+            auto_hide_alpha = 0.2, -- Shared alpha for all additional bars when hidden
             stance = {
                 x_position = -215,
                 y_offset = -50, -- Additional Y offset for fine-tuning position
                 button_size = 32, -- Size of stance buttons
-                button_spacing = 3 -- Spacing between stance buttons
+                button_spacing = 3, -- Spacing between stance buttons
+                auto_hide = false -- Auto-hide stance bar when mouse not hovering
             },
             pet = {
-
-                grid = false -- Disable grid by default (matches original Dragonflight port)
+                grid = false, -- Disable grid by default (matches original Dragonflight port)
+                auto_hide = false -- Auto-hide pet bar when mouse not hovering
             },
             vehicle = {
                 x_position = -40,

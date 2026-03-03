@@ -431,6 +431,49 @@ function addon:CreateOptionsTable()
                                     StaticPopup_Show("DRAGONUI_RELOAD_UI")
                                 end,
                                 order = 6
+                            },
+                            separator_autohide = {
+                                type = 'description',
+                                name = "",
+                                order = 7
+                            },
+                            auto_hide_bars = {
+                                type = 'toggle',
+                                name = "Auto-Hide Additional Bars",
+                                desc = "Automatically fade out the additional action bars (left, right, bottom left, bottom right) when the mouse is not hovering over them",
+                                get = function()
+                                    return addon.db.profile.mainbars.auto_hide_bars
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.auto_hide_bars = value
+                                    -- Apply auto-hide immediately
+                                    if addon.RefreshMainbarsAutoHide then
+                                        addon.RefreshMainbarsAutoHide()
+                                    end
+                                end,
+                                order = 8
+                            },
+                            auto_hide_alpha = {
+                                type = 'range',
+                                name = "Hidden Opacity",
+                                desc = "Opacity level when the additional bars are hidden (0 = invisible, 1 = fully visible)",
+                                min = 0,
+                                max = 1,
+                                step = 0.05,
+                                get = function()
+                                    return addon.db.profile.mainbars.auto_hide_alpha
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.auto_hide_alpha = value
+                                    -- Apply alpha change immediately if auto-hide is enabled
+                                    if addon.db.profile.mainbars.auto_hide_bars and addon.RefreshMainbarsAutoHide then
+                                        addon.RefreshMainbarsAutoHide()
+                                    end
+                                end,
+                                disabled = function()
+                                    return not addon.db.profile.mainbars.auto_hide_bars
+                                end,
+                                order = 9
                             }
                         }
                     },
@@ -1188,6 +1231,34 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 2,
                                 width = "half"
+                            },
+                            separator_autohide = {
+                                type = 'description',
+                                name = "",
+                                order = 3
+                            },
+                            auto_hide_alpha = {
+                                type = 'range',
+                                name = "Auto-Hide Opacity",
+                                desc = "Opacity level when bars are hidden (0 = invisible, 1 = fully visible). Applies to Pet and Stance bars when auto-hide is enabled.",
+                                min = 0,
+                                max = 1,
+                                step = 0.05,
+                                get = function()
+                                    return addon.db.profile.additional.auto_hide_alpha
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.additional.auto_hide_alpha = value
+                                    -- Apply to both bars if auto-hide is enabled
+                                    if addon.RefreshPetbarAutoHide then
+                                        addon.RefreshPetbarAutoHide()
+                                    end
+                                    if addon.RefreshStanceAutoHide then
+                                        addon.RefreshStanceAutoHide()
+                                    end
+                                end,
+                                order = 4,
+                                width = "half"
                             }
                         }
                     },
@@ -1285,6 +1356,27 @@ function addon:CreateOptionsTable()
                                         end,
                                         order = 4,
                                         width = "full"
+                                    },
+                                    separator_autohide = {
+                                        type = 'description',
+                                        name = "",
+                                        order = 5
+                                    },
+                                    auto_hide = {
+                                        type = 'toggle',
+                                        name = "Auto-Hide Stance Bar",
+                                        desc = "Automatically fade out the stance bar when the mouse is not hovering over it",
+                                        get = function()
+                                            return addon.db.profile.additional.stance.auto_hide
+                                        end,
+                                        set = function(info, value)
+                                            addon.db.profile.additional.stance.auto_hide = value
+                                            if addon.RefreshStanceAutoHide then
+                                                addon.RefreshStanceAutoHide()
+                                            end
+                                        end,
+                                        order = 6,
+                                        width = "full"
                                     }
                                 }
                             },
@@ -1309,6 +1401,27 @@ function addon:CreateOptionsTable()
                                             end
                                         end,
                                         order = 1,
+                                        width = "full"
+                                    },
+                                    separator_autohide = {
+                                        type = 'description',
+                                        name = "",
+                                        order = 2
+                                    },
+                                    auto_hide = {
+                                        type = 'toggle',
+                                        name = "Auto-Hide Pet Bar",
+                                        desc = "Automatically fade out the pet bar when the mouse is not hovering over it",
+                                        get = function()
+                                            return addon.db.profile.additional.pet.auto_hide
+                                        end,
+                                        set = function(info, value)
+                                            addon.db.profile.additional.pet.auto_hide = value
+                                            if addon.RefreshPetbarAutoHide then
+                                                addon.RefreshPetbarAutoHide()
+                                            end
+                                        end,
+                                        order = 3,
                                         width = "full"
                                     }
                                 }

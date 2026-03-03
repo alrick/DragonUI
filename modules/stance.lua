@@ -295,6 +295,101 @@ end
 -- APPLY/RESTORE FUNCTIONS
 -- ============================================================================
 
+-- Setup auto-hide functionality for stance bar
+local function SetupAutoHideForStance()
+    if not IsModuleEnabled() then return end
+    
+    local stanceBarFrame = _G.ShapeshiftBarFrame
+    if not stanceBarFrame then return end
+    
+    if not stanceBarFrame.autoHideConfigured then
+        -- Enable mouse on the bar frame
+        stanceBarFrame:EnableMouse(true)
+        
+        -- Add OnEnter script to show the bar
+        stanceBarFrame:SetScript("OnEnter", function(self)
+            local stanceConfig = addon.db and addon.db.profile and addon.db.profile.additional and addon.db.profile.additional.stance
+            if stanceConfig and stanceConfig.auto_hide then
+                self:SetAlpha(1)
+            end
+        end)
+        
+        -- Add OnLeave script to hide the bar
+        stanceBarFrame:SetScript("OnLeave", function(self)
+            local stanceConfig = addon.db and addon.db.profile and addon.db.profile.additional and addon.db.profile.additional.stance
+            local additionalConfig = addon.db and addon.db.profile and addon.db.profile.additional
+            if stanceConfig and stanceConfig.auto_hide then
+                local alpha = additionalConfig and additionalConfig.auto_hide_alpha or 0.2
+                self:SetAlpha(alpha)
+            end
+        end)
+        
+        -- Hook all buttons to maintain visibility when hovering
+        for i = 1, NUM_SHAPESHIFT_SLOTS do
+            local button = _G["ShapeshiftButton" .. i]
+            if button and not button.autoHideHooked then
+                button:HookScript("OnEnter", function(self)
+                    local stanceConfig = addon.db and addon.db.profile and addon.db.profile.additional and addon.db.profile.additional.stance
+                    if stanceBarFrame and stanceConfig and stanceConfig.auto_hide then
+                        stanceBarFrame:SetAlpha(1)
+                    end
+                end)
+                button:HookScript("OnLeave", function(self)
+                    local stanceConfig = addon.db and addon.db.profile and addon.db.profile.additional and addon.db.profile.additional.stance
+                    local additionalConfig = addon.db and addon.db.profile and addon.db.profile.additional
+                    if stanceBarFrame and stanceConfig and stanceConfig.auto_hide then
+                        local alpha = additionalConfig and additionalConfig.auto_hide_alpha or 0.2
+                        stanceBarFrame:SetAlpha(alpha)
+                    end
+                end)
+                button.autoHideHooked = true
+            end
+        end
+        
+        stanceBarFrame.autoHideConfigured = true
+    end
+    
+    -- Apply initial alpha state
+    local stanceConfig = addon.db and addon.db.profile and addon.db.profile.additional and addon.db.profile.additional.stance
+    local additionalConfig = addon.db and addon.db.profile and addon.db.profile.additional
+    if stanceConfig and stanceConfig.auto_hide then
+        local isMouseOver = stanceBarFrame:IsMouseOver()
+        if isMouseOver then
+            stanceBarFrame:SetAlpha(1)
+        else
+            local alpha = additionalConfig and additionalConfig.auto_hide_alpha or 0.2
+            stanceBarFrame:SetAlpha(alpha)
+        end
+    else
+        stanceBarFrame:SetAlpha(1)
+    end
+end
+
+-- Public function to refresh auto-hide state
+function addon.RefreshStanceAutoHide()
+    if not IsModuleEnabled() then return end
+    
+    local stanceBarFrame = _G.ShapeshiftBarFrame
+    if not stanceBarFrame then return end
+    
+    local stanceConfig = addon.db and addon.db.profile and addon.db.profile.additional and addon.db.profile.additional.stance
+    local additionalConfig = addon.db and addon.db.profile and addon.db.profile.additional
+    
+    if stanceConfig and stanceConfig.auto_hide then
+        -- Enable auto-hide: check if mouse is over the frame
+        local isMouseOver = stanceBarFrame:IsMouseOver()
+        if isMouseOver then
+            stanceBarFrame:SetAlpha(1)
+        else
+            local alpha = additionalConfig and additionalConfig.auto_hide_alpha or 0.2
+            stanceBarFrame:SetAlpha(alpha)
+        end
+    else
+        -- Disable auto-hide: set to full opacity
+        stanceBarFrame:SetAlpha(1)
+    end
+end
+
 local function ApplyStanceSystem()
     if StanceModule.applied or not IsModuleEnabled() then return end
     
@@ -328,6 +423,9 @@ local function ApplyStanceSystem()
     
     -- Initial setup
     InitializeStanceBar()
+    
+    -- Setup auto-hide functionality
+    SetupAutoHideForStance()
     
     StanceModule.applied = true
     

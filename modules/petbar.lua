@@ -169,6 +169,62 @@ local function UpdateAnchorPosition()
     end
 end
 
+-- Setup auto-hide functionality for pet bar
+local function SetupAutoHideForPetbar()
+    if not IsModuleEnabled() then return end
+    
+    -- Check if buttons exist first
+    local hasButtons = false
+    for i = 1, NUM_PET_ACTION_SLOTS do
+        if _G["PetActionButton" .. i] then
+            hasButtons = true
+            break
+        end
+    end
+    
+    if not hasButtons then return end
+    
+    -- Hook all buttons for auto-hide functionality
+    for i = 1, NUM_PET_ACTION_SLOTS do
+        local button = _G["PetActionButton" .. i]
+        if button and not button.autoHideHooked then
+            button:HookScript("OnEnter", function(self)
+                local additionalConfig = addon.db and addon.db.profile and addon.db.profile.additional
+                local petConfig = additionalConfig and additionalConfig.pet
+                if petConfig and petConfig.auto_hide then
+                    -- Trigger PetActionBar_Update which will call petbutton_updatestate via hook
+                    if PetActionBar_Update then
+                        PetActionBar_Update()
+                    end
+                end
+            end)
+            button:HookScript("OnLeave", function(self)
+                local additionalConfig = addon.db and addon.db.profile and addon.db.profile.additional
+                local petConfig = additionalConfig and additionalConfig.pet
+                if petConfig and petConfig.auto_hide then
+                    -- Trigger PetActionBar_Update which will call petbutton_updatestate via hook
+                    if PetActionBar_Update then
+                        PetActionBar_Update()
+                    end
+                end
+            end)
+            button.autoHideHooked = true
+        end
+    end
+    
+    -- Initial alpha will be set by the first PetActionBar_Update call
+end
+
+-- Public function to refresh auto-hide state
+function addon.RefreshPetbarAutoHide()
+    if not IsModuleEnabled() then return end
+    
+    -- Trigger PetActionBar_Update which will recalculate alpha for all buttons
+    if PetActionBar_Update then
+        PetActionBar_Update()
+    end
+end
+
 -- Create pet bar frame (follows anchor)
 local function CreatePetbarFrame()
     if not IsModuleEnabled() then return end
@@ -187,6 +243,34 @@ end
 -- ============================================================================
 -- LEGACY PET BUTTON STATE MANAGEMENT (the secret that makes it work!)
 -- ============================================================================
+
+-- Helper function to get the correct alpha for a pet button
+local function GetPetButtonAlpha(button, hasAction)
+    local config = GetDynamicConfig()
+    local additionalConfig = addon.db and addon.db.profile and addon.db.profile.additional
+    local petConfig = additionalConfig and additionalConfig.pet
+    
+    -- If button has no action and grid is disabled, hide it
+    if not hasAction and not config.grid then
+        return 0
+    end
+    
+    -- If auto-hide is enabled, check mouse position
+    if petConfig and petConfig.auto_hide then
+        -- Check if mouse is over this button or any other pet button
+        for i = 1, NUM_PET_ACTION_SLOTS do
+            local btn = _G["PetActionButton" .. i]
+            if btn and btn:IsMouseOver() then
+                return 1
+            end
+        end
+        -- Mouse not over any button, use configured alpha
+        return additionalConfig and additionalConfig.auto_hide_alpha or 0.2
+    end
+    
+    -- Default: full opacity
+    return 1
+end
 
 -- This is directly from the working legacy petbar - handles all icon updates
 local function petbutton_updatestate(self, event)
@@ -234,15 +318,12 @@ local function petbutton_updatestate(self, event)
             else
                 AutoCastShine_AutoCastStop(petAutoCastShine)
             end
-            if name then
-                if not config.grid then
-                    petActionButton:SetAlpha(1)
-                end
-            else
-                if not config.grid then
-                    petActionButton:SetAlpha(0)
-                end
-            end
+            
+            -- Set button alpha based on auto-hide and action state
+            local hasAction = name ~= nil
+            local alpha = GetPetButtonAlpha(petActionButton, hasAction)
+            petActionButton:SetAlpha(alpha)
+            
             if texture then
                 if GetPetActionSlotUsable(index) then
                     SetDesaturation(petActionIcon, nil)
@@ -437,6 +518,8 @@ local function ApplyPetbarSystem()
     -- Update editor frame registration with actual anchor frame
     UpdateEditorFrameRegistration()
     
+    -- Setup auto-hide functionality
+    SetupAutoHideForPetbar()
    
 end
 

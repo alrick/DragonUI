@@ -867,6 +867,107 @@ end
         end
     end
 
+    -- Setup auto-hide functionality for additional action bars
+    local function SetupAutoHideForAdditionalBars()
+        local additionalBars = {
+            {bar = MultiBarLeft, name = "leftbar"},
+            {bar = MultiBarRight, name = "rightbar"},
+            {bar = MultiBarBottomLeft, name = "bottombarleft"},
+            {bar = MultiBarBottomRight, name = "bottombarright"}
+        }
+
+        for _, barData in ipairs(additionalBars) do
+            local bar = barData.bar
+            if bar and not bar.autoHideConfigured then
+                -- Enable mouse on the bar frame
+                bar:EnableMouse(true)
+                
+                -- Add OnEnter script to show the bar
+                bar:SetScript("OnEnter", function(self)
+                    if addon.db and addon.db.profile and addon.db.profile.mainbars and addon.db.profile.mainbars.auto_hide_bars then
+                        self:SetAlpha(1)
+                    end
+                end)
+                
+                -- Add OnLeave script to hide the bar
+                bar:SetScript("OnLeave", function(self)
+                    if addon.db and addon.db.profile and addon.db.profile.mainbars and addon.db.profile.mainbars.auto_hide_bars then
+                        local alpha = addon.db.profile.mainbars.auto_hide_alpha or 0.2
+                        self:SetAlpha(alpha)
+                    end
+                end)
+
+                -- Hook all buttons to maintain visibility when hovering
+                for i = 1, 12 do
+                    local button = _G[bar:GetName() .. "Button" .. i]
+                    if button and not button.autoHideHooked then
+                        button:HookScript("OnEnter", function(self)
+                            if bar and addon.db and addon.db.profile and addon.db.profile.mainbars and addon.db.profile.mainbars.auto_hide_bars then
+                                bar:SetAlpha(1)
+                            end
+                        end)
+                        button:HookScript("OnLeave", function(self)
+                            if bar and addon.db and addon.db.profile and addon.db.profile.mainbars and addon.db.profile.mainbars.auto_hide_bars then
+                                local alpha = addon.db.profile.mainbars.auto_hide_alpha or 0.2
+                                bar:SetAlpha(alpha)
+                            end
+                        end)
+                        button.autoHideHooked = true
+                    end
+                end
+                
+                bar.autoHideConfigured = true
+            end
+        end
+
+        -- Apply initial alpha state
+        if addon.db and addon.db.profile and addon.db.profile.mainbars then
+            local additionalBarsToUpdate = {MultiBarLeft, MultiBarRight, MultiBarBottomLeft, MultiBarBottomRight}
+            for _, bar in ipairs(additionalBarsToUpdate) do
+                if bar then
+                    if addon.db.profile.mainbars.auto_hide_bars then
+                        local isMouseOver = bar:IsMouseOver()
+                        if isMouseOver then
+                            bar:SetAlpha(1)
+                        else
+                            local alpha = addon.db.profile.mainbars.auto_hide_alpha or 0.2
+                            bar:SetAlpha(alpha)
+                        end
+                    else
+                        bar:SetAlpha(1)
+                    end
+                end
+            end
+        end
+    end
+
+    -- Public function to refresh auto-hide state
+    function addon.RefreshMainbarsAutoHide()
+        if not addon.db or not addon.db.profile or not addon.db.profile.mainbars then
+            return
+        end
+
+        local additionalBars = {MultiBarLeft, MultiBarRight, MultiBarBottomLeft, MultiBarBottomRight}
+        
+        for _, bar in ipairs(additionalBars) do
+            if bar then
+                if addon.db.profile.mainbars.auto_hide_bars then
+                    -- Enable auto-hide: check if mouse is over the frame
+                    local isMouseOver = bar:IsMouseOver()
+                    if isMouseOver then
+                        bar:SetAlpha(1)
+                    else
+                        local alpha = addon.db.profile.mainbars.auto_hide_alpha or 0.2
+                        bar:SetAlpha(alpha)
+                    end
+                else
+                    -- Disable auto-hide: set to full opacity
+                    bar:SetAlpha(1)
+                end
+            end
+        end
+    end
+
     -- update position for secondary action bars - LEGACY FUNCTION
     function addon.RefreshUpperActionBarsPosition()
         if not MultiBarBottomLeftButton1 or not MultiBarBottomRight then
@@ -958,6 +1059,9 @@ end
 
         -- Set up drag handlers - Execute immediately
         SetupActionBarDragHandlers()
+
+        -- Set up auto-hide for additional bars
+        SetupAutoHideForAdditionalBars()
 
         -- CRITICAL: Ensure gryphons are above all action bars after everything is positioned
         local function EnsureGryphonsOnTop()
