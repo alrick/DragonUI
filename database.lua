@@ -116,8 +116,13 @@ local defaults = {
             scale_bottomright = 0.9,
             scale_vehicle = 1,
             
-            -- Auto-hide settings for additional bars
-            auto_hide_bars = false,
+            -- Auto-hide settings for additional bars (individual control)
+            auto_hide_bars = {
+                left = false,        -- MultiBarLeft
+                right = false,       -- MultiBarRight
+                bottom_left = false, -- MultiBarBottomLeft
+                bottom_right = false -- MultiBarBottomRight
+            },
             auto_hide_alpha = 0.2
         },
 

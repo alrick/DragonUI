@@ -437,21 +437,69 @@ function addon:CreateOptionsTable()
                                 name = "",
                                 order = 7
                             },
-                            auto_hide_bars = {
+                            auto_hide_left = {
                                 type = 'toggle',
-                                name = "Auto-Hide Additional Bars",
-                                desc = "Automatically fade out the additional action bars (left, right, bottom left, bottom right) when the mouse is not hovering over them",
+                                name = "Auto-Hide Left Bar",
+                                desc = "Automatically fade out the left action bar (MultiBarLeft) when the mouse is not hovering over it",
                                 get = function()
-                                    return addon.db.profile.mainbars.auto_hide_bars
+                                    return addon.db.profile.mainbars.auto_hide_bars.left
                                 end,
                                 set = function(info, value)
-                                    addon.db.profile.mainbars.auto_hide_bars = value
+                                    addon.db.profile.mainbars.auto_hide_bars.left = value
                                     -- Apply auto-hide immediately
                                     if addon.RefreshMainbarsAutoHide then
                                         addon.RefreshMainbarsAutoHide()
                                     end
                                 end,
                                 order = 8
+                            },
+                            auto_hide_right = {
+                                type = 'toggle',
+                                name = "Auto-Hide Right Bar",
+                                desc = "Automatically fade out the right action bar (MultiBarRight) when the mouse is not hovering over it",
+                                get = function()
+                                    return addon.db.profile.mainbars.auto_hide_bars.right
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.auto_hide_bars.right = value
+                                    -- Apply auto-hide immediately
+                                    if addon.RefreshMainbarsAutoHide then
+                                        addon.RefreshMainbarsAutoHide()
+                                    end
+                                end,
+                                order = 9
+                            },
+                            auto_hide_bottom_left = {
+                                type = 'toggle',
+                                name = "Auto-Hide Bottom Left Bar",
+                                desc = "Automatically fade out the bottom left action bar (MultiBarBottomLeft) when the mouse is not hovering over it",
+                                get = function()
+                                    return addon.db.profile.mainbars.auto_hide_bars.bottom_left
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.auto_hide_bars.bottom_left = value
+                                    -- Apply auto-hide immediately
+                                    if addon.RefreshMainbarsAutoHide then
+                                        addon.RefreshMainbarsAutoHide()
+                                    end
+                                end,
+                                order = 10
+                            },
+                            auto_hide_bottom_right = {
+                                type = 'toggle',
+                                name = "Auto-Hide Bottom Right Bar",
+                                desc = "Automatically fade out the bottom right action bar (MultiBarBottomRight) when the mouse is not hovering over it",
+                                get = function()
+                                    return addon.db.profile.mainbars.auto_hide_bars.bottom_right
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.auto_hide_bars.bottom_right = value
+                                    -- Apply auto-hide immediately
+                                    if addon.RefreshMainbarsAutoHide then
+                                        addon.RefreshMainbarsAutoHide()
+                                    end
+                                end,
+                                order = 11
                             },
                             auto_hide_alpha = {
                                 type = 'range',
@@ -465,15 +513,23 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.mainbars.auto_hide_alpha = value
-                                    -- Apply alpha change immediately if auto-hide is enabled
-                                    if addon.db.profile.mainbars.auto_hide_bars and addon.RefreshMainbarsAutoHide then
+                                    -- Apply alpha change immediately if any auto-hide is enabled
+                                    local anyEnabled = addon.db.profile.mainbars.auto_hide_bars.left or 
+                                                     addon.db.profile.mainbars.auto_hide_bars.right or
+                                                     addon.db.profile.mainbars.auto_hide_bars.bottom_left or
+                                                     addon.db.profile.mainbars.auto_hide_bars.bottom_right
+                                    if anyEnabled and addon.RefreshMainbarsAutoHide then
                                         addon.RefreshMainbarsAutoHide()
                                     end
                                 end,
                                 disabled = function()
-                                    return not addon.db.profile.mainbars.auto_hide_bars
+                                    local anyEnabled = addon.db.profile.mainbars.auto_hide_bars.left or 
+                                                     addon.db.profile.mainbars.auto_hide_bars.right or
+                                                     addon.db.profile.mainbars.auto_hide_bars.bottom_left or
+                                                     addon.db.profile.mainbars.auto_hide_bars.bottom_right
+                                    return not anyEnabled
                                 end,
-                                order = 9
+                                order = 12
                             }
                         }
                     },
